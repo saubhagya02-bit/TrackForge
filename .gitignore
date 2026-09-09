@@ -1,6 +1,28 @@
 .env
-node_modules/
-target/
+.env.local
+.env.production
+
+# Java build output
+**/target/
+**/*.jar
+**/*.war
+
+# Node
+**/node_modules/
+**/dist/
+**/.vite/
+
+# IDE
 .idea/
 .vscode/
-*.log
+*.iml
+
+# Docker volumes (if mounted locally)
+postgres_data/
+redis_data/
+kafka_data/
+minio_data/
+
+# OS
+.DS_Store
+Thumbs.db
