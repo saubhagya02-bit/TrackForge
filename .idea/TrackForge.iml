@@ -2,7 +2,12 @@
 <module type="JAVA_MODULE" version="4">
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/services/api-gateway/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/auth-service/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/bug-service/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/services/notification-service/src/main/java" isTestSource="false" />
+    </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
