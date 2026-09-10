@@ -95,8 +95,11 @@ services:
     ports:
       - "9091:9090"
     volumes:
-      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./infrastructure/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
 
   grafana:
     image: grafana/grafana:latest
@@ -107,7 +110,6 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
     depends_on:
       - prometheus
 
@@ -127,21 +129,21 @@ services:
   #     - auth-service
   #     - bug-service
 
-  # auth-service:
-  #   build: ./services/auth-service
-  #   container_name: bt-auth
-  #   ports:
-  #     - "8081:8081"
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trackforge_auth
-  #     SPRING_DATASOURCE_USERNAME: postgres
-  #     SPRING_DATASOURCE_PASSWORD: postgres
-  #     SPRING_REDIS_HOST: redis
-  #     JWT_SECRET: ${JWT_SECRET:-trackforge-secret-256-bits-change-in-prod}
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
+  auth-service:
+     build: ./services/auth-service
+     container_name: bt-auth
+     ports:
+       - "8081:8081"
+     environment:
+       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trackforge_auth
+       SPRING_DATASOURCE_USERNAME: postgres
+       SPRING_DATASOURCE_PASSWORD: postgres
+       SPRING_REDIS_HOST: redis
+       JWT_SECRET: ${JWT_SECRET:-trackforge-secret-256-bits-change-in-prod}
+       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+     depends_on:
+       postgres:
+         condition: service_healthy
 
   # bug-service:
   #   build: ./services/bug-service
