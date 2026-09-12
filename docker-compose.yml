@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ── Infrastructure ────────────────────────────────────────
   postgres:
@@ -9,7 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
@@ -41,7 +39,8 @@ services:
     image: confluentinc/cp-kafka:7.6.0
     container_name: bt-kafka
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_started
     ports:
       - "9092:9092"
     environment:
@@ -59,6 +58,7 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
+      start_period: 30s
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -72,7 +72,7 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
 
   minio:
-    image: minio/minio:latest
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5
     container_name: bt-minio
     ports:
       - "9000:9000"
@@ -80,14 +80,8 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
     volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - minio_data:/bitnami/minio/data
 
   prometheus:
     image: prom/prometheus:latest
@@ -98,8 +92,8 @@ services:
       - ./infrastructure/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.retention.time=15d'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
 
   grafana:
     image: grafana/grafana:latest
@@ -114,100 +108,52 @@ services:
       - prometheus
 
   # ── Services ──────────────────────────────────────────────
-  # api-gateway:
-  #   build: ./services/api-gateway
-  #   container_name: bt-gateway
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     AUTH_SERVICE_URL: http://auth-service:8081
-  #     BUG_SERVICE_URL: http://bug-service:8082
-  #     NOTIFICATION_SERVICE_URL: http://notification-service:8083
-  #     ANALYTICS_SERVICE_URL: http://analytics-service:8084
-  #     JWT_SECRET: ${JWT_SECRET:-trackforge-secret-256-bits-change-in-prod}
-  #   depends_on:
-  #     - auth-service
-  #     - bug-service
 
   auth-service:
-     build: ./services/auth-service
-     container_name: bt-auth
-     ports:
-       - "8081:8081"
-     environment:
-       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trackforge_auth
-       SPRING_DATASOURCE_USERNAME: postgres
-       SPRING_DATASOURCE_PASSWORD: postgres
-       SPRING_REDIS_HOST: redis
-       JWT_SECRET: ${JWT_SECRET:-trackforge-secret-256-bits-change-in-prod}
-       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-     depends_on:
-       postgres:
-         condition: service_healthy
+    build: ./services/auth-service
+    container_name: bt-auth
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trackforge_auth
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_REDIS_HOST: redis
+      JWT_SECRET: ${JWT_SECRET:-trackforge-secret-256-bits-change-in-prod}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
 
-  # bug-service:
-  #   build: ./services/bug-service
-  #   container_name: bt-bugs
-  #   ports:
-  #     - "8082:8082"
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trackforge_bugs
-  #     SPRING_DATASOURCE_USERNAME: postgres
-  #     SPRING_DATASOURCE_PASSWORD: postgres
-  #     SPRING_REDIS_HOST: redis
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-  #     MINIO_URL: http://minio:9000
-  #     MINIO_ACCESS_KEY: minioadmin
-  #     MINIO_SECRET_KEY: minioadmin
-  #     JWT_SECRET: ${JWT_SECRET:-trackforge-secret-256-bits-change-in-prod}
-  #     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_healthy
-
-  # notification-service:
-  #   build: ./services/notification-service
-  #   container_name: bt-notify
-  #   ports:
-  #     - "8083:8083"
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trackforge_notifications
-  #     SPRING_DATASOURCE_USERNAME: postgres
-  #     SPRING_DATASOURCE_PASSWORD: postgres
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-  #     SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
-  #     FROM_EMAIL: noreply@trackforge.io
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_healthy
-
-  # analytics-service:
-  #   build: ./services/analytics-service
-  #   container_name: bt-analytics
-  #   ports:
-  #     - "8084:8084"
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trackforge_analytics
-  #     SPRING_DATASOURCE_USERNAME: postgres
-  #     SPRING_DATASOURCE_PASSWORD: postgres
-  #     KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     kafka:
-  #       condition: service_healthy
-
-  # frontend:
-    # build: ./frontend
-    # container_name: bt-frontend
-    # ports:
-    #   - "5173:80"
-    # depends_on:
-    #   - api-gateway
+  bug-service:
+    build: ./services/bug-service
+    container_name: bt-bugs
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trackforge_bugs
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_REDIS_HOST: redis
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      JWT_SECRET: ${JWT_SECRET:-trackforge-secret-256-bits-change-in-prod}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      redis:
+        condition: service_started
 
 volumes:
   postgres_data:
