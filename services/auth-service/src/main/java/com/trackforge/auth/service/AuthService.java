@@ -156,4 +156,24 @@ public class AuthService {
                 .createdAt(u.getCreatedAt())
                 .build();
     }
+
+    public java.util.List<AuthDto.UserSummary> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(this::toSummary)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    public AuthDto.UserSummary getUserById(java.util.UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+        return toSummary(user);
+    }
+
+    @Transactional
+    public AuthDto.UserSummary updateUserRole(java.util.UUID id, String role) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+        user.setRole(User.Role.valueOf(role));
+        return toSummary(userRepository.save(user));
+    }
 }
