@@ -19,6 +19,7 @@ public class BugDto {
         private String priority = "MEDIUM";
         private String severity = "MINOR";
         private UUID assigneeId;
+        private boolean clearAssignee = false;
         private String stepsToReproduce;
         private String expectedBehavior;
         private String actualBehavior;
@@ -37,6 +38,10 @@ public class BugDto {
         private String expectedBehavior;
         private String actualBehavior;
         private String environment;
+
+        public boolean isClearAssignee() {
+            return false;
+        }
     }
 
     @Data @Builder
