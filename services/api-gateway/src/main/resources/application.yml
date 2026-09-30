@@ -1,0 +1,92 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+      routes:
+
+        # ── Auth — PUBLIC endpoints ─────────────────────────
+        # No JWT filter here.
+        - id: auth-public
+          uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+          predicates:
+            - Path=/api/auth/register,/api/auth/login,/api/auth/refresh
+
+        # ── Auth — PROTECTED endpoints ──────────────────────
+        - id: auth-protected
+          uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - name: JwtAuthFilter
+
+        # ── Bug / Project service ───────────────────────────
+        - id: bug-service
+          uri: ${BUG_SERVICE_URL:http://bug-service:8082}
+          predicates:
+            - Path=/api/projects/**
+          filters:
+            - name: JwtAuthFilter
+
+        # ── Bugs / Comments ─────────────────────────────────
+        - id: comments-service
+          uri: ${BUG_SERVICE_URL:http://bug-service:8082}
+          predicates:
+            - Path=/api/bugs/**
+          filters:
+            - name: JwtAuthFilter
+
+        # ── Users / Team management ─────────────────────────
+        - id: users-service
+          uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - name: JwtAuthFilter
+
+        # ── Analytics service ────────────────────────────────
+        - id: analytics-service
+          uri: ${ANALYTICS_SERVICE_URL:http://analytics-service:8084}
+          predicates:
+            - Path=/api/analytics/**
+          filters:
+            - name: JwtAuthFilter
+
+        # ── WebSocket passthrough ────────────────────────────
+        - id: websocket
+          uri: ${BUG_SERVICE_URL:http://bug-service:8082}
+          predicates:
+            - Path=/ws/**
+
+jwt:
+  secret: ${JWT_SECRET:trackforge-local-dev-secret-key-minimum-256-bits-abcdefghijklmnopqrstuvwxyz123456}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,gateway
+
+  endpoint:
+    health:
+      show-details: always
