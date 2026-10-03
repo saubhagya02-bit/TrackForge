@@ -5,13 +5,29 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  // Fix: sockjs-client uses Node.js globals — polyfill them for browser
+  define: {
+    global: 'globalThis',
   },
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: 'http://localhost:8080', changeOrigin: true },
-      '/ws':  { target: 'ws://localhost:8082',  ws: true, changeOrigin: true },
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://localhost:8082',
+        ws: true,
+        changeOrigin: true,
+      },
     },
+  },
+  css: {
+    postcss: './postcss.config.js',
   },
 })
